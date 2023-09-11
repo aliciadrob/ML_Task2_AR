@@ -7,7 +7,6 @@ import math
 import random
 import sys
 import os
-
 import neat
 import pygame
 
@@ -15,15 +14,13 @@ import pygame
 # WIDTH = 1600
 # HEIGHT = 880
 
-WIDTH = 1920
-HEIGHT = 1080
-
+WIDTH = 1600
+HEIGHT = 880
 CAR_SIZE_X = 50
 CAR_SIZE_Y = 50
-
 BORDER_COLOR = (255, 255, 255, 255)  # Color To Crash on Hit
-
 current_generation = 0  # Generation counter
+
 """
 The Car Class 
 
@@ -37,7 +34,8 @@ why it is necessary and where it is being used in the rest of the program.
 
 
 class Car:
-    """1. This Function:
+    """1. func __init__:
+
     This function is the class constructor. This is a special function which is called upon when an
     object of the car class is instantiated. Attributes of the car class are defined here.
     Notably, alive, distance, time, radars and position
@@ -72,16 +70,22 @@ class Car:
         self.distance = 0  # Distance Driven
         self.time = 0  # Time Passed
 
-    """ 2. This Function:
-    
+    """ 2. func draw:
+        This function draws the car sprite, and draws the radar lines.
+        screen.blit(self.rotated_sprite, self.position) calls the screen.blit function to draw the sprite and self.position signifies what position the car should be in.
+        self.draw_radar(screen) calls the draw_radar function to draw radar lines for the car(s)
     """
 
     def draw(self, screen):
         screen.blit(self.rotated_sprite, self.position)  # Draw Sprite
         self.draw_radar(screen)  # OPTIONAL FOR SENSORS
 
-    """ 3. This Function:
-    
+    """ 3. func draw_radar:
+        This function is responsible for drawing radar lines, as a visual sensor for the cars
+        for radar in self.radars: loops through the self.radars list, containing tuples with the radar's coordinates and the distance between the car and a detected object
+        position = radar[0] extracts the coordinates of the radar, and set the position variable to these values
+        pygame.draw.line uses the pygame library to draw a line representing the radar's detection range
+        pygame.draw.circle uses the pygame library to draw a green circle where the radar detects an object
     """
 
     def draw_radar(self, screen):
@@ -91,8 +95,12 @@ class Car:
             pygame.draw.line(screen, (0, 255, 0), self.center, position, 1)
             pygame.draw.circle(screen, (0, 255, 0), position, 5)
 
-    """ 4. This Function:
-    
+    """ 4. func check_collision:
+        This function is responsible for determining whether the car has collided with another object
+        self.alive = True is used to determine whether or not the car has crashed yet
+        for point in self.corners: loops through the list of corner points of the car, or the four corners of the car
+        if game_map.get_at((int(point[0]), int(point[1]))) == BORDER_COLOR: checks if the pixel colours at the current corner matches the border colour, with game_map.get_at being used to retrieve the coordinates of the car on the map
+        if any of the corners are in contact with pixels of the same colour as the border, self.alive = False meaning that the car has collided with an object
     """
 
     def check_collision(self, game_map):
@@ -104,8 +112,12 @@ class Car:
                 self.alive = False
                 break
 
-    """ 5. This Function:
-    
+    """ 5. check_radar:
+        This function is responsible for the radar sensors detecting obstacles and recording the radar data 
+        length = 0 is used to monitor the distance from the centre of the car to the detected object
+        x and y represent the coordinates where the radar line starts based on angles and car's coordinates
+        while not game_map.get_at((x, y)) == BORDER_COLOR and length < 300: loops continues whilst (x, y) doesn't equal the border colour and whilst the length of the radar is no more than 300 pixels
+        dist = int( is a variable representing the distance from the center of the car to the detected object, calculated using pythagoras theroem, and this distance is appended to the self.radars list
     """
 
     def check_radar(self, degree, game_map):
@@ -137,8 +149,20 @@ class Car:
         )
         self.radars.append([(x, y), dist])
 
-    """ 6. This Function:
-    
+    """ 6. func update:
+        if not self.speed_set: checks to see if the speed of the car has been set
+            if self.speed_set = False, the car's speed is set to 20 and self.speed_set is set to equal "True"
+        self.rotated_sprite = self.rotate_center(self.sprite, self.angle) rotates the car based on its current rotation, as well as updating the sprite as to the car's positioning
+        self.position[0] += math.cos(math.radians(360 - self.angle)) * self.speed updates the car's x position based off its current angle and speed, attempting to ensure the car moves in the correct trajectory
+        self.position[0] = max(self.position[0], 20) sets a minimum x position of 20 pixels to ensure that the car doesn't drive off, or get close to the edge of the screen
+        self.position[0] = min(self.position[0], WIDTH - 120) sets a buffer of 120 pixels on the right side of the game frame
+        self.distance += self.speed updates the distance variable by adding the current speed, accuratly showing distance driven
+        self.time += 1 represents the time passed, the time element is incremented based on the period of time passed since the start of the car simulation
+        self.center recalculates the centre of the car (the positioning) from the updated position of the car
+        length = 0.5 * CAR_SIZE_X length variable is set to half of the car's width
+        left_top, right_top, left_bottom, right_bottom calculated based on updated the car's centre position and angle
+        self.check_collision(game_map) used to check if the car has collided with an object yet, and updates the self.alive attribute based on this
+        self.radars.clear() clears the self.radars list, ready for teh next update
     """
 
     def update(self, game_map):
@@ -199,8 +223,13 @@ class Car:
         for d in range(-90, 120, 45):
             self.check_radar(d, game_map)
 
-    """ 7. This Function:
-    
+    """ 7. func get_data(self):
+        This function retrieves radar data, and normalises it into normalised data
+        radars = self.radars assigns data from the radar sensors to the variable radar
+        return_values all values are set to 0, ready to store processed radar data
+        for i, radar in enumerate(radars): loops through the values in the radars list, and processes each radar value
+        return_values[i] = int(radar[1] / 30) calculates standardised data for the radar snesor data, with radar[1] representing the distance measured by the radar
+        return return_values returns the return_values list, with normailsed data based off radar data
     """
 
     def get_data(self):
@@ -212,16 +241,18 @@ class Car:
 
         return return_values
 
-    """ 8. This Function:
-    
+    """ 8. func is_alive:
+        This function checks if the car is still alive
+        return self.alive returns whether or not the car is alive
     """
 
     def is_alive(self):
         # Basic Alive Function
         return self.alive
 
-    """ 9. This Function:
-    
+    """ 9. func get_reward:
+        This function returns a "reward" for a car's fitness in the simulation
+        return self.distance / (CAR_SIZE_X / 2) in this self.distance is divided by half the car's width (CAR_SIZE_X / 2) to calculate the distance travelled in order to calculate the reward
     """
 
     def get_reward(self):
@@ -229,8 +260,13 @@ class Car:
         # return self.distance / 50.0
         return self.distance / (CAR_SIZE_X / 2)
 
-    """ 10. This Function:
-    
+    """ 10. func rotate_center:
+        This function rotates the car around the centre point at a specific angle
+        rectangle = image.get_rect() uses the get_rect() to retrieve information regarding the sprits image and positioning
+        rotated_image = pygame.transform.rotate(image, angle) uses the pygame library to use the pygame.transform.rotate function and to rotate the image by a specific angle
+        rotated_rectangle = rectangle.copy() creates a new copy of the rectangle variable
+        rotated_rectangle.center = rotated_image.get_rect().center centre of the copied rectangle is set to match the centre of the rotated rectangle
+        rotated_image = rotated_image.subsurface(rotated_rectangle).copy() rectangle is updated to ensure that it remains the correct size with the correct centre
     """
 
     def rotate_center(self, image, angle):
@@ -325,7 +361,7 @@ def run_simulation(genomes, config):
     generation_font = pygame.font.SysFont("Arial", 30)
     alive_font = pygame.font.SysFont("Arial", 20)
     mean_font = pygame.font.SysFont("Arial", 20)
-    game_map = pygame.image.load("map.png").convert()  # Convert Speeds Up A Lot
+    game_map = pygame.image.load("map3.png").convert()  # Convert Speeds Up A Lot
 
     global current_generation
     current_generation += 1
